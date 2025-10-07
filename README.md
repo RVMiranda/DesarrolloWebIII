@@ -44,3 +44,6 @@ pytest -q
 ## Notas
 - Números negativos -> 400 con JSON `{code:"NEGATIVE_NOT_ALLOWED",...}`
 - División entre cero -> 403 con JSON `{code:"DIVISION_BY_ZERO",...}`
+
+## Cambios
+- Cambio para verificar github actions
