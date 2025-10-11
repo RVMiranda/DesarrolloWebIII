@@ -1,11 +1,11 @@
-name: Backend – Build & Push (main + /backend)
+name: Frontend – Build & Push (main + /frontend)
 
 on:
   push:
     branches: ["main"]
     paths:
-      - "backend/**"
-      - ".github/workflows/backend-build.yaml"
+      - "frontend/**"
+      - ".github/workflows/frontend-build.yaml"
   workflow_dispatch:
 
 jobs:
@@ -29,11 +29,11 @@ jobs:
       - name: Set image vars
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "IMAGE=ghcr.io/${REPO_LOWER}-backend" >> $GITHUB_ENV
+          echo "IMAGE=ghcr.io/${REPO_LOWER}-frontend" >> $GITHUB_ENV
           echo "TAG=latest" >> $GITHUB_ENV
 
       - name: Build
-        run: docker build -t "$IMAGE:$TAG" backend
+        run: docker build -t "$IMAGE:$TAG" frontend
 
       - name: Push
         run: docker push "$IMAGE:$TAG"

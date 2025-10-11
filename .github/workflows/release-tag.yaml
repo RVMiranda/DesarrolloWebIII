@@ -1,19 +1,19 @@
-name: Backend – Build & Push (main + /backend)
+name: Release Images (tag v*.*.*)
 
 on:
   push:
-    branches: ["main"]
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-build.yaml"
-  workflow_dispatch:
+    tags:
+      - "v*.*.*"
 
 jobs:
-  build:
+  build-matrix:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        component: [backend, frontend]
 
     steps:
       - name: Checkout
@@ -29,11 +29,11 @@ jobs:
       - name: Set image vars
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "IMAGE=ghcr.io/${REPO_LOWER}-backend" >> $GITHUB_ENV
-          echo "TAG=latest" >> $GITHUB_ENV
+          echo "IMAGE=ghcr.io/${REPO_LOWER}-${{ matrix.component }}" >> $GITHUB_ENV
+          echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
       - name: Build
-        run: docker build -t "$IMAGE:$TAG" backend
+        run: docker build -t "$IMAGE:$TAG" "${{ matrix.component }}"
 
       - name: Push
         run: docker push "$IMAGE:$TAG"
