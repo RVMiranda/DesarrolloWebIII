@@ -3,80 +3,62 @@ services:
     image: mongo
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin_user
-      MONGO_INITDB_ROOT_PASSWORD: web3
-    ports:
-      - "27017:27017"
-    networks:
-      - mongo-network
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    ports: ["27017:27017"]
+    networks: [mongo-network]
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test:
+        - CMD-SHELL
+        - >
+          mongosh --host 127.0.0.1
+          -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD"
+          --authenticationDatabase admin --quiet
+          --eval "if (db.runCommand({ping:1}).ok) { quit(0) } else { quit(1) }"
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   mongoclient:
     image: alpine/mongosh
-    depends_on:
-      mongo:
-        condition: service_healthy
-    networks:
-      - mongo-network
-    command: ["tail", "-f", "/dev/null"]
+    depends_on: { mongo: { condition: service_healthy } }
+    command: ["tail","-f","/dev/null"]
     restart: always
+    networks: [mongo-network]
 
   calculadora:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    # Si mantienes image:, añade pull_policy: never para evitar pull
-    # image: calculadora-fast-api:latest
-    # pull_policy: never
+    image: ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-backend:${BACKEND_TAG}
+    platform: linux/amd64            # <- emulación en Mac M-series (rápido de aplicar)
+    pull_policy: always
     environment:
-      MONGO_URL: mongodb://admin_user:web3@mongo:27017/?authSource=admin
-    ports:
-      - "8089:8000"
-    networks:
-      - mongo-network
-    volumes:
-      - ./backend:/app
+      MONGO_URL: mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@mongo:27017/?authSource=admin
+    ports: ["8089:8000"]
+    networks: [mongo-network]
     restart: always
-    depends_on:
-      mongo:
-        condition: service_healthy
+    depends_on: { mongo: { condition: service_healthy } }
 
   frontend:
-    build: ./frontend
-    ports:
-    - "3000:3000"
-    volumes:
-    - ./frontend:/app
-    - /app/node_modules
+    image: ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-frontend:${FRONTEND_TAG}
+    platform: linux/amd64
+    pull_policy: always
     environment:
-    - CHOKIDAR_USEPOLLING=true
-    depends_on:
-    - calculadora
-    networks:
-    - mongo-network
+      REACT_APP_API_URL: http://calculadora:8000 
+      VITE_API_URL:        http://calculadora:8000 # por si se cambia a Vite
+      CHOKIDAR_USEPOLLING: "true"
+    ports: ["3000:3000"]   
+    depends_on: [calculadora]
+    networks: [mongo-network]
 
   calculadora-tests:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-backend:${BACKEND_TAG}
+    platform: linux/amd64
     working_dir: /app
     environment:
       MONGO_URL: mongodb://admin_user:web3@mongo:27017/?authSource=admin
-    volumes:
-      - ./backend:/app
-    depends_on:
-      mongo:
-        condition: service_healthy
-    networks:
-      - mongo-network
-    # Ejecuta pytest por defecto
-    command: ["pytest", "-q"]
-
-
+    depends_on: { mongo: { condition: service_healthy } }
+    networks: [mongo-network]
+    command: ["pytest","-q"]
+    profiles: ["test"]
 
 networks:
   mongo-network:
