@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient, DESCENDING
 from pymongo import ASCENDING
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
 
@@ -74,3 +75,4 @@ def obtener_historial():
     return {"historial": historial}
 
 #comentario para verificar workflow
+instrumentator = Instrumentator().instrument(app).expose(app)

@@ -5,3 +5,4 @@ pytest
 coverage
 httpx
 mongomock
+prometheus-fastapi-instrumentator
