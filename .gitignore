@@ -1,1 +1,4 @@
 .env
+.vscode/
+**/grafana/data/
+**/grafana/logs/
