@@ -5,8 +5,11 @@ from pymongo.collection import Collection
 class HistoryRepository:
     def __init__(self, col: Collection):
         self.col = col
-        self.col.create_index("op")
-        self.col.create_index("created_at")
+        try:
+            self.col.create_index("op")
+            self.col.create_index("created_at")
+        except:            
+            pass
 
     def insert(self, op: str, numbers: List[float], result: float) -> str:
         doc = {"op": op, "numbers": numbers, "result": result, "created_at": datetime.utcnow()}

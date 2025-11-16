@@ -6,11 +6,15 @@ from app.main import app
 def mock_mongo(monkeypatch):
     client = mongomock.MongoClient()
     db = client["calcdb"]
+    
     def fake_get_db():
         return db
+    
     from app import deps
     monkeypatch.setattr(deps, "get_db", fake_get_db)
-    yield
+    
+    yield db
+    client.drop_database("calcdb")
 
 @pytest.fixture
 def client():
