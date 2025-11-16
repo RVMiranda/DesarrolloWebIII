@@ -10,10 +10,16 @@ services:
     networks:
       - mongo-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test:
+        - CMD-SHELL
+        - >
+          mongosh --host 127.0.0.1
+          -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD"
+          --authenticationDatabase admin --quiet
+          --eval "if (db.runCommand({ping:1}).ok) { quit(0) } else { quit(1) }"
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     volumes:
       - mongo-data:/data/db
 
@@ -28,14 +34,13 @@ services:
       - mongo-network
 
   calculadora:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-backend:parcial1
+    platform: linux/amd64
+    pull_policy: always
     environment:
-      # Nota: tu código Python debe leer MONGO_URI (o acepta también MONGO_URL si lo deseas)
-      MONGO_URI: mongodb://admin_user:web3@mongo:27017/?authSource=admin
+      MONGO_URL: mongodb://admin_user:web3@mongo:27017/?authSource=admin
     ports:
-      - "8089:8000"          # backend publicado en el host
+      - "8089:8000"
     networks:
       - mongo-network
     volumes:
@@ -46,26 +51,100 @@ services:
         condition: service_healthy
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-frontend:parcial1
+    platform: linux/amd64
+    pull_policy: always  
+    environment:
+      REACT_APP_API_URL: http://calculadora:8000
+      VITE_API_URL: http://localhost:8089   # Para llamadas desde el navegador
+      CHOKIDAR_USEPOLLING: "true"
     ports:
-      - "3000:3000"          # Vite en el host
+      - "3000:3000"
     volumes:
-      - ./frontend:/app      # hot-reload del frontend
-      - /app/node_modules    # evita que tu node_modules local pise el del contenedor
+      - ./frontend:/app
+      - /app/node_modules
     networks:
       - mongo-network
     depends_on:
       - calculadora
     restart: always
-    environment:
-      - CHOKIDAR_USEPOLLING=true             # mejor hot-reload en Docker
-      - VITE_API_URL=http://localhost:8089   # IMPORTANTÍSIMO para llamadas desde el navegador
 
-networks:
-  mongo-network:
-    driver: bridge
+  calculadora-tests:
+    image: ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-backend:${BACKEND_TAG}
+    platform: linux/amd64
+    working_dir: /app
+    environment:
+      MONGO_URL: mongodb://admin_user:web3@mongo:27017/?authSource=admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - mongo-network
+    command: ["pytest", "-q"]
+    profiles: ["test"]
+
+  prometheus:
+    image: prom/prometheus
+    container_name: desarrolloweb3_parcial1-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/prometheus.yml
+    command: "--config.file=/prometheus.yml"
+    ports:
+      - "9090:9090"
+    networks:
+      - mongo-network
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: desarrolloweb3_parcial1-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - mongo-network
+    restart: always
+    depends_on:
+      - prometheus
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: desarrolloweb3_parcial1-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    networks:
+      - mongo-network
+    restart: always
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: desarrolloweb3_parcial1-promtail
+    depends_on:
+      - loki
+    volumes:
+      - ./monitoring/promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - mongo-network
+    restart: always
 
 volumes:
   mongo-data:
+  grafana-storage:
+  loki-data:
+
+networks:
+  mongo-network:
+    name: desarrolloweb3_parcial1_mongo-network
+    driver: bridge
