@@ -1,0 +1,41 @@
+name: Release Images Parcial1 (tag parcial1-v*.*.*)
+
+on:
+  push:
+    tags:
+      - "parcial1-v*.*.*"
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component: [backend, frontend]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image vars
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/${REPO_LOWER}-${{ matrix.component }}" >> $GITHUB_ENV
+          # Remover el prefijo 'parcial1-' del tag para la imagen
+          TAG_VERSION=$(echo "${GITHUB_REF_NAME}" | sed 's/parcial1-//')
+          echo "TAG=parcial1-${TAG_VERSION}" >> $GITHUB_ENV
+
+      - name: Build
+        run: docker build -t "$IMAGE:$TAG" "${{ matrix.component }}"
+
+      - name: Push
+        run: docker push "$IMAGE:$TAG"

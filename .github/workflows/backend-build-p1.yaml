@@ -1,0 +1,55 @@
+name: Backend – Build & Push (parcial1 + /backend)
+
+on:
+  push:
+    branches: ["parcial1"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-build-parcial1.yaml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installing Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Running pytest
+        working-directory: ./backend
+        run: |
+          pytest test_main.py
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image vars
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/${REPO_LOWER}-backend" >> $GITHUB_ENV
+          echo "TAG=parcial1" >> $GITHUB_ENV
+
+      - name: Build
+        run: docker build -t "$IMAGE:$TAG" backend
+
+      - name: Push
+        run: docker push "$IMAGE:$TAG"

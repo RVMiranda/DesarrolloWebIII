@@ -1,0 +1,39 @@
+name: Frontend – Build & Push (parcial1 + /frontend)
+
+on:
+  push:
+    branches: ["parcial1"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-build-parcial1.yaml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image vars
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/${REPO_LOWER}-frontend" >> $GITHUB_ENV
+          echo "TAG=parcial1" >> $GITHUB_ENV
+
+      - name: Build
+        run: docker build -t "$IMAGE:$TAG" frontend
+
+      - name: Push
+        run: docker push "$IMAGE:$TAG"
