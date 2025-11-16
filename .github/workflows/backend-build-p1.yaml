@@ -33,7 +33,8 @@ jobs:
       - name: Running pytest
         working-directory: ./backend
         run: |
-          pytest test_main.py
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          pytest tests/ -v
 
       - name: Login GHCR
         uses: docker/login-action@v3
