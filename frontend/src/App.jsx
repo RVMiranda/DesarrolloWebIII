@@ -86,7 +86,7 @@ export default function App(){
 				{activeTab === "calculator" && <Calculator />}
 				{activeTab === "history" && <History />}
 			</div>
-			{/* comentario para hacer build */}
+			{/* comentario para levnatar imagen desde actions y hacer build */}
 		</div>
 	);
 }
