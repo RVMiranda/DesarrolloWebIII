@@ -8,3 +8,4 @@ mongomock==4.3.0
 prometheus-fastapi-instrumentator
 loki-logger-handler
 requests
+psutil==5.9.8
