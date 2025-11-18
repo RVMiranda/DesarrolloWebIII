@@ -13,15 +13,13 @@ global:
 
 scrape_configs:
   # Métricas del backend FastAPI
-  - job_name: "fastapi"
+  - job_name: "calculadora"
+    metrics_path: /metrics
     static_configs:
       - targets: ["calculadora:8000"]
         labels:
           service: "backend"
           environment: "parcial1"
-    
-    # Métricas específicas de FastAPI (si tienes prometheus_client)
-    metrics_path: '/metrics'
     scrape_interval: 10s
   
   # Auto-monitoreo de Prometheus

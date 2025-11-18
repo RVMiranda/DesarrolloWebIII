@@ -87,8 +87,8 @@ services:
     image: prom/prometheus
     container_name: desarrolloweb3_parcial1-prometheus
     volumes:
-      - ./monitoring/prometheus.yml:/prometheus.yml
-    command: "--config.file=/prometheus.yml"
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: "--config.file=/etc/prometheus/prometheus.yml"
     ports:
       - "9090:9090"
     networks:
