@@ -1,5 +1,6 @@
 import os
 from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 from .logger import logger
 
 _client = None

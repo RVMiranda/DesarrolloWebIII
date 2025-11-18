@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, status, HTTPException, Request
+from fastapi import FastAPI, Depends, status, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -13,10 +13,16 @@ import traceback
 import time
 import os
 import psutil
+import datetime
+import asyncio
+from pydantic import BaseModel, field_validator
+from typing import List
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 
 app = FastAPI(title="Calc API")
 
-_process = None
+_process = psutil.Process(os.getpid())
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,20 +32,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def log_ok(operacion, datos, resultado):
+    logger.info(f"[OK] {operacion} | Entrada={datos} | Resultado={resultado}")
+
+def log_fail(operacion, datos, causa):
+    logger.error(f"[ERROR] {operacion} | Motivo={causa} | Entrada={datos}")
+
+def log_mongo_error(causa):
+    logger.error(f"[MONGO ERROR] {causa}")
+
 # * Metricas pra prometheus
 
 operations_counter = Counter(
     'calculator_operations_total',
     'Total de operaciones realizadas',
-    ['operation', 'status']  #! labels: sum/sub/mul/div y success/error
+    ['operation', 'status']  # labels: sum/sub/mul/div y success/error
 )
 
 # Histograma de duración de operaciones #! en segundos
 operation_duration = Histogram(
     'calculator_operation_duration_seconds',
     'Duración de las operaciones en segundos',
-    ['operation'],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+    ['operation']
 )
 
 # Contador de errores por tipo
@@ -69,26 +83,47 @@ def get_process():
     return _process
 
 def update_system_metrics():
-    """Actualiza métricas de CPU y memoria"""
+    """
+    Actualiza los gauges de CPU y memoria del proceso actual.
+    """
     try:
-        process = get_process()
+        logger.info("Actualizando métricas de sistema")
+        proc = _process
+        # CPU:
+        # - La primera llamada a cpu_percent() suele devolver 0.0
+        # - Luego se basa en el delta desde la última llamada.
+        # - Dividimos entre el número de CPUs para tener un % más real por proceso.
+        cpu = proc.cpu_percent(interval=0.1)
+        #cpu = cpu / psutil.cpu_count() if psutil.cpu_count() else cpu
 
-        cpu = process.cpu_percent()
-        if cpu == 0.0:
-            #! Primera llamada retorna 0.0, hacer una segunda llamada rápida
-            time.sleep(0.1)
-            cpu = process.cpu_percent()
+        # Memoria:
+        mem_info = proc.memory_info()  # bytes RSS del proceso
+        mem_percent_value = proc.memory_percent()
+        
         cpu_usage.set(cpu)
-
-        mem_info = process.memory_info()
         memory_usage.set(mem_info.rss)
-        memory_percent.set(process.memory_percent())
-        logger.info(f"Métricas de sistema actualizadas: CPU {cpu}%, Memoria {mem_info.rss} bytes ({process.memory_percent()}%)")
+        memory_percent.set(mem_percent_value)
+        logger.info(f"Métricas actualizadas: CPU={cpu}%, Memoria={mem_info.rss} bytes ({mem_percent_value}%)")
     except Exception as e:
-        logger.error(f"Error actualizando métricas de sistema: {str(e)}")
+        logger.error(f"Error actualizando métricas de sistema: {e}")
+
+async def system_metrics_loop(interval_seconds: int = 5):
+    """
+    Loop asíncrono que actualiza las métricas de CPU/memoria cada N segundos.
+    """
+    logger.info("Iniciando loop de métricas de sistema (CPU/Memoria)")
+    # Primera llamada para evitar que la métrica se quede mucho tiempo en 0.0
+    update_system_metrics()
+
+    while True:
+        update_system_metrics()
+        await asyncio.sleep(interval_seconds)
+
 
 def repo_dep(db=Depends(get_db)):
     return HistoryRepository(db["history"])
+
+# * ENDPPOINTS    
 
 @app.get("/metrics", tags=["monitoring"])
 def metrics():
@@ -201,13 +236,24 @@ def history(filters: HistoryFilters = Depends(), repo: HistoryRepository = Depen
 def health():
     return {"ok": True}
 
+@app.get("/")
+def root():
+    return {"msg": "API Calculadora funcionando!"}
+
+# * Eventos de arranque y apagado
 @app.on_event("startup")
 async def startup_event():
     logger.info("Iniciando la aplicación Calc API")
     logger.info("Backend de Calculadora iniciada correctamente")
     get_process()  #* Inicializar proceso para métricas
 
+@app.on_event("startup")
+async def start_system_metrics_collector():
+    # Lanzamos el loop de métricas de sistema como tarea de fondo
+    asyncio.create_task(system_metrics_loop(interval_seconds=5))
+
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Apagando la aplicación Calc API")
     logger.info("Backend de Calculadora apagada correctamente")
+
