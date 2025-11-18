@@ -1,0 +1,733 @@
+{
+	"annotations": {
+		"list": [
+			{
+				"builtIn": 1,
+				"datasource": "-- Grafana --",
+				"enable": true,
+				"hide": true,
+				"iconColor": "rgba(0, 255, 255, 0.7)",
+				"name": "Annotations & Alerts",
+				"type": "dashboard"
+			}
+		]
+	},
+	"description": "Dashboard de monitoreo para la calculadora: duración de operaciones, uso, errores, CPU y memoria.",
+	"editable": true,
+	"fiscalYearStartMonth": 0,
+	"graphTooltip": 1,
+	"id": 0,
+	"links": [],
+	"panels": [
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 0
+			},
+			"id": 8,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "area",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"editorMode": "code",
+					"expr": "sum by (status) (\n  calculator_operations_total\n)\n",
+					"legendFormat": "{{status}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Estado de las Operaciones",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"fillOpacity": 80,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"lineWidth": 1,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "req/s"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 0
+			},
+			"id": 2,
+			"options": {
+				"barRadius": 0,
+				"barWidth": 0.97,
+				"fullHighlight": false,
+				"groupWidth": 0.7,
+				"legend": {
+					"calcs": [],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"orientation": "auto",
+				"showValue": "auto",
+				"stacking": "none",
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "single",
+					"sort": "none"
+				},
+				"xTickLabelRotation": 0,
+				"xTickLabelSpacing": 0
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"editorMode": "code",
+					"expr": "sum by(operation) (rate(calculator_operations_total[5m]))",
+					"legendFormat": "{{operation}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Uso de cada operación (peticiones/seg)",
+			"type": "barchart"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 15,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 2,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "auto",
+						"showValues": false,
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "ms"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 8
+			},
+			"id": 1,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"expr": "(rate(calculator_operation_duration_seconds_sum[5m]) / rate(calculator_operation_duration_seconds_count[5m])) * 1000",
+					"interval": "",
+					"legendFormat": "{{operation}}",
+					"refId": "A"
+				}
+			],
+			"title": "Duración media de operaciones (ms)",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 2,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "auto",
+						"showValues": false,
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "decmbytes"
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "CPU (%)"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "percent"
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "Memoria (MiB)"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "mibibytes"
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 8
+			},
+			"id": 4,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"expr": "calculator_cpu_usage_percent",
+					"legendFormat": "CPU (%)",
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"editorMode": "code",
+					"expr": "calculator_memory_usage_bytes / 1024 / 1024",
+					"legendFormat": "Memoria (MiB)",
+					"range": true,
+					"refId": "B"
+				}
+			],
+			"title": "Uso de CPU y memoria",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 2,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "auto",
+						"showValues": false,
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "req/s"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 16
+			},
+			"id": 3,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "table",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"expr": "sum by(operation) (rate(calculator_operations_total{status=\"error\"}[5m]))",
+					"legendFormat": "{{operation}}",
+					"refId": "A"
+				}
+			],
+			"title": "Errores por operación (peticiones/seg)",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"mappings": [],
+					"max": 0,
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "short"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 6,
+				"w": 6,
+				"x": 12,
+				"y": 16
+			},
+			"id": 7,
+			"options": {
+				"displayMode": "basic",
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": false
+				},
+				"maxVizHeight": 300,
+				"minVizHeight": 16,
+				"minVizWidth": 8,
+				"namePlacement": "auto",
+				"orientation": "horizontal",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showUnfilled": true,
+				"sizing": "auto",
+				"valueMode": "color"
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"editorMode": "code",
+					"expr": "sum by(operation) (calculator_operations_total{status=\"error\"})",
+					"legendFormat": "{{operation}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Errores por operación (acumulado)",
+			"type": "bargauge"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"mappings": [],
+					"max": 100,
+					"min": 0,
+					"thresholds": {
+						"mode": "percentage",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "yellow",
+								"value": 1
+							},
+							{
+								"color": "red",
+								"value": 5
+							}
+						]
+					},
+					"unit": "percent"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 6,
+				"w": 6,
+				"x": 0,
+				"y": 24
+			},
+			"id": 5,
+			"options": {
+				"colorMode": "background",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "horizontal",
+				"percentChangeColorMode": "standard",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showPercentChange": false,
+				"textMode": "auto",
+				"wideLayout": true
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"expr": "(sum(rate(calculator_operations_total{status=\"error\"}[5m])) / sum(rate(calculator_operations_total[5m]))) * 100",
+					"refId": "A"
+				}
+			],
+			"title": "Porcentaje de errores (%)",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "df4fqrs6d4pogf"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"mappings": [],
+					"max": 0,
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": 0
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "short"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 6,
+				"w": 6,
+				"x": 6,
+				"y": 24
+			},
+			"id": 6,
+			"options": {
+				"displayMode": "basic",
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": false
+				},
+				"maxVizHeight": 300,
+				"minVizHeight": 16,
+				"minVizWidth": 8,
+				"namePlacement": "auto",
+				"orientation": "horizontal",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"showUnfilled": true,
+				"sizing": "auto",
+				"valueMode": "color"
+			},
+			"pluginVersion": "12.2.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "YOUR_PROMETHEUS_UID"
+					},
+					"expr": "sum by(operation) (calculator_operations_total)",
+					"legendFormat": "{{operation}}",
+					"refId": "A"
+				}
+			],
+			"title": "Uso de cada operación (total acumulado)",
+			"type": "bargauge"
+		}
+	],
+	"preload": false,
+	"refresh": "5s",
+	"schemaVersion": 42,
+	"tags": ["calculadora", "prometheus", "fastapi", "monitoring"],
+	"templating": {
+		"list": []
+	},
+	"time": {
+		"from": "now-15m",
+		"to": "now"
+	},
+	"timepicker": {},
+	"timezone": "",
+	"title": "Calculadora - Monitoreo de operaciones y recursos",
+	"uid": "calc-monitoring-dashboard",
+	"version": 11
+}
