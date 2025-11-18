@@ -16,6 +16,8 @@ import psutil
 
 app = FastAPI(title="Calc API")
 
+_process = None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -24,18 +26,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# * Metricas pra prometheus
+
 operations_counter = Counter(
     'calculator_operations_total',
     'Total de operaciones realizadas',
-    ['operation', 'status']  # labels: sum/sub/mul/div y success/error
+    ['operation', 'status']  #! labels: sum/sub/mul/div y success/error
 )
 
-# Histograma de duración de operaciones
+# Histograma de duración de operaciones #! en segundos
 operation_duration = Histogram(
     'calculator_operation_duration_seconds',
     'Duración de las operaciones en segundos',
-    ['operation'], 
-    buckets=[1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]
+    ['operation'],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
 )
 
 # Contador de errores por tipo
@@ -58,14 +62,28 @@ memory_percent = Gauge('calculator_memory_usage_percent', 'Uso de memoria del pr
 
 instrumentator = Instrumentator().instrument(app).expose(app)
 
+def get_process():
+    global _process
+    if _process is None:
+        _process = psutil.Process(os.getpid())
+    return _process
+
 def update_system_metrics():
     """Actualiza métricas de CPU y memoria"""
     try:
-        process = psutil.Process(os.getpid())
-        cpu_usage.set(process.cpu_percent(interval=0.1))
+        process = get_process()
+
+        cpu = process.cpu_percent()
+        if cpu == 0.0:
+            #! Primera llamada retorna 0.0, hacer una segunda llamada rápida
+            time.sleep(0.1)
+            cpu = process.cpu_percent()
+        cpu_usage.set(cpu)
+
         mem_info = process.memory_info()
         memory_usage.set(mem_info.rss)
         memory_percent.set(process.memory_percent())
+        logger.info(f"Métricas de sistema actualizadas: CPU {cpu}%, Memoria {mem_info.rss} bytes ({process.memory_percent()}%)")
     except Exception as e:
         logger.error(f"Error actualizando métricas de sistema: {str(e)}")
 
@@ -75,7 +93,7 @@ def repo_dep(db=Depends(get_db)):
 @app.get("/metrics", tags=["monitoring"])
 def metrics():
     """Endpoint para que Prometheus scrape las métricas"""
-    # Actualizar métricas de sistema antes de devolver
+    #* Actualizar métricas de sistema antes de devolver
     update_system_metrics()
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
@@ -88,16 +106,16 @@ def batch(body: BatchBody, repo: HistoryRepository = Depends(repo_dep)):
         start_time = time.time()
         try:
             result = perform_and_store(repo, it.op, it.numbers)
-            duration_ms = (time.time() - start_time) * 1000
+            duration_s = (time.time() - start_time) #! en segundos
 
             items_out.append({"index": idx, "status": "ok", "data": result})
 
             operations_counter.labels(operation=it.op, status='success').inc()
-            operation_duration.labels(operation=it.op).observe(duration_ms)
+            operation_duration.labels(operation=it.op).observe(duration_s)
             logger.info(f"Batch [{idx}]: Operación '{it.op}' completada exitosamente - Números: {it.numbers}, Resultado: {result['result']}")
         except HTTPException as e:
             any_error = True
-            operation_ms = (time.time() - start_time) * 1000
+            duration_s = (time.time() - start_time) #! en segundos
             items_out.append({
                 "index": idx,
                 "status": "error",
@@ -105,13 +123,13 @@ def batch(body: BatchBody, repo: HistoryRepository = Depends(repo_dep)):
                 "status_code": e.status_code
             })
             operations_counter.labels(operation=it.op, status='error').inc()
-            operation_duration.labels(operation=it.op).observe(duration_ms)
+            operation_duration.labels(operation=it.op).observe(duration_s)
             error_type = e.detail.get('code', 'UNKNOWN') if isinstance(e.detail, dict) else 'HTTP_ERROR'
             errors_counter.labels(error_type=error_type, operation=it.op).inc()
             logger.error(f"Batch [{idx}]: Error en operación '{it.op}' - Números: {it.numbers}, Error: {e.detail}")
         except Exception as e:
             any_error = True
-            duration_ms = (time.time() - start_time) * 1000
+            duration_s = (time.time() - start_time) #! en segundos
             error_detail = {"code":"UNEXPECTED","message":str(e)}
             items_out.append({
                 "index": idx,
@@ -120,7 +138,7 @@ def batch(body: BatchBody, repo: HistoryRepository = Depends(repo_dep)):
                 "status_code": 500
             })
             operations_counter.labels(operation=it.op, status='error').inc()
-            operation_duration.labels(operation=it.op).observe(duration_ms)
+            operation_duration.labels(operation=it.op).observe(duration_s)
             errors_counter.labels(error_type='UNEXPECTED', operation=it.op).inc()
             logger.error(f"Batch [{idx}]: Error inesperado en operación '{it.op}' - Números: {it.numbers}, Error: {str(e)}\n{traceback.format_exc()}")
     http_code = getattr(status, "HTTP_207_MULTI_STATUS", 207)
@@ -143,23 +161,23 @@ def operation(op: str, body: NumbersBody, repo: HistoryRepository = Depends(repo
     start_time = time.time()
     try:
         result = perform_and_store(repo, op, body.numbers)
-        duration_ms = (time.time() - start_time) * 1000
+        duration_s = (time.time() - start_time) #! en segundos
         operations_counter.labels(operation=op, status='success').inc()
-        operation_duration.labels(operation=op).observe(duration_ms)
+        operation_duration.labels(operation=op).observe(duration_s)
         logger.info(f"Operación '{op}' completada exitosamente - Números: {body.numbers}, Resultado: {result['result']}")
         return result
     except HTTPException as e:
-        duration_ms = (time.time() - start_time) * 1000
+        duration_s = (time.time() - start_time) #! en segundos
         operations_counter.labels(operation=op, status='error').inc()
-        operation_duration.labels(operation=op).observe(duration_ms)
+        operation_duration.labels(operation=op).observe(duration_s)
         error_type = e.detail.get('code', 'UNKNOWN') if isinstance(e.detail, dict) else 'HTTP_ERROR'
         errors_counter.labels(error_type=error_type, operation=op).inc()
         logger.error(f"Error en operación '{op}' - Números: {body.numbers}, Error: {e.detail}")
         raise
     except Exception as e:
-        duration_ms = (time.time() - start_time) * 1000
+        duration_s = (time.time() - start_time) #! en segundos
         operations_counter.labels(operation=op, status='error').inc()
-        operation_duration.labels(operation=op).observe(duration_ms)
+        operation_duration.labels(operation=op).observe(duration_s)
         errors_counter.labels(error_type='UNEXPECTED', operation=op).inc()
         logger.error(f"Error inesperado en operación '{op}' - Números: {body.numbers}, Error: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="error interno del servidor: " + str(e))
@@ -187,6 +205,7 @@ def health():
 async def startup_event():
     logger.info("Iniciando la aplicación Calc API")
     logger.info("Backend de Calculadora iniciada correctamente")
+    get_process()  #* Inicializar proceso para métricas
 
 @app.on_event("shutdown")
 async def shutdown_event():
